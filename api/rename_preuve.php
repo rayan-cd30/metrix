@@ -3,6 +3,7 @@
  * API pour renommer une preuve
  */
 
+require_once __DIR__ . '/auth_guard.php';
 header('Content-Type: application/json');
 
 require_once __DIR__ . '/../classes/Database.php';

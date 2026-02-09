@@ -42,35 +42,9 @@ export default class MetrixApp {
     switch (action) {
       case 'metric-update': return this.updateManager.updateMetricValue(btn, id);
       case 'obs-update': return this.updateManager.updateObservation(btn, id);
-      case 'clause-add': {
-        const formSelector = btn.dataset.form;
-        const endpoint = btn.dataset.endpoint || '../api/add_clause.php';
-        if (formSelector) {
-          const form = document.querySelector(formSelector);
-          if (!form) return alert('Formulaire introuvable');
-          const fd = new FormData(form);
-          const data = {};
-          fd.forEach((v, k) => { data[k] = v; });
-          console.log('Submitting clause', endpoint, data);
-          return this.clause.sendInsert(endpoint, data, btn);
-        }
-        return;
-      }
-
-      case 'domaine-add': {
-        const formSelector = btn.dataset.form;
-        const endpoint = btn.dataset.endpoint || '../api/add_domaine.php';
-        if (formSelector) {
-          const form = document.querySelector(formSelector);
-          if (!form) return alert('Formulaire introuvable');
-          const fd = new FormData(form);
-          const data = {};
-          fd.forEach((v, k) => { data[k] = v; });
-          console.log('Submitting domaine', endpoint, data);
-          return this.clause.sendInsert(endpoint, data, btn);
-        }
-        return;
-      }
+      case 'form-submit': return this.handleFormSubmit(btn);
+      case 'clause-add': return this.handleFormSubmit(btn, '../api/add_clause.php', 'clause');
+      case 'domaine-add': return this.handleFormSubmit(btn, '../api/add_domaine.php', 'domaine');
 
       case 'domain-toggle': return this.domainManager.toggleDomainSection(btn);
       case 'sidebar-domain-toggle': return window.toggleSidebarDomain?.(btn);
@@ -80,5 +54,27 @@ export default class MetrixApp {
       case 'preuve-rename': return this.preuveManager.renamePreuve(btn, id);
       case 'preuve-clear': return this.preuveManager.deleteAllPreuves(btn, id);
     }
+  }
+
+  handleFormSubmit(btn, fallbackEndpoint = null, fallbackEntity = null) {
+    const formSelector = btn.dataset.form;
+    const endpoint = btn.dataset.endpoint || fallbackEndpoint;
+    const entity = btn.dataset.entity || fallbackEntity;
+
+    if (!formSelector || !endpoint) {
+      alert('Configuration du formulaire invalide');
+      return;
+    }
+
+    const form = document.querySelector(formSelector);
+    if (!form) {
+      alert('Formulaire introuvable');
+      return;
+    }
+
+    const data = Object.fromEntries(new FormData(form).entries());
+    if (entity && !data.entity) data.entity = entity;
+
+    return this.clause.sendInsert(endpoint, data, btn);
   }
 }

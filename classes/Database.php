@@ -11,9 +11,9 @@ class Database {
     private function connect() {
         try {
             $this->db = new PDO(
-                "mysql:host=srw-deming.intra.cg30.fr;dbname=pssi;charset=utf8",
-                "pssi",
-                "ZeNewPSSI?"
+                "mysql:host=mysql;dbname=pssi;charset=utf8",
+                "root",
+                "root"
             );
         } catch (PDOException $e) {
             die("Connection failed: " . $e->getMessage());
@@ -98,6 +98,68 @@ class Database {
         $req->execute();
         $result = $req->fetch();
         return $result ? intval($result['id']) : null;
+    }
+
+    public function getNextId($table, $idColumn = 'id') {
+        $this->reconnectIfNeeded();
+
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $table) || !preg_match('/^[a-zA-Z0-9_]+$/', $idColumn)) {
+            throw new InvalidArgumentException('Invalid table or column name');
+        }
+
+        $sql = sprintf(
+            "SELECT %s FROM %s ORDER BY %s DESC LIMIT 1",
+            $idColumn,
+            $table,
+            $idColumn
+        );
+
+        $req = $this->db->prepare($sql);
+        $req->execute();
+        $result = $req->fetch();
+
+        return $result ? intval($result[$idColumn]) + 1 : 1;
+    }
+
+    public function insertRow($table, array $data) {
+        $this->reconnectIfNeeded();
+
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $table)) {
+            throw new InvalidArgumentException('Invalid table name');
+        }
+
+        if (empty($data)) {
+            throw new InvalidArgumentException('No data to insert');
+        }
+
+        $columns = array_keys($data);
+        foreach ($columns as $column) {
+            if (!preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+                throw new InvalidArgumentException('Invalid column name');
+            }
+        }
+
+        $columnList = implode(', ', array_map(fn($column) => "`$column`", $columns));
+        $placeholderList = implode(', ', array_map(fn($column) => ":$column", $columns));
+        $sql = sprintf("INSERT INTO `%s` (%s) VALUES (%s)", $table, $columnList, $placeholderList);
+
+        $params = [];
+        foreach ($data as $column => $value) {
+            $params[":$column"] = $value;
+        }
+
+        $stmt = $this->db->prepare($sql);
+        $result = $stmt->execute($params);
+        if (!$result) {
+            return false;
+        }
+
+        $insertedId = $this->db->lastInsertId();
+        if ($insertedId !== false && $insertedId !== '' && $insertedId !== '0') {
+            return (int)$insertedId;
+        }
+
+        return true;
     }
 
     public function getMetrics() {
@@ -353,7 +415,11 @@ class Database {
         ]);
 
         if ($result) {
-            return (int)$this->db->lastInsertId();
+            $insertedId = $this->db->lastInsertId();
+            if ($insertedId !== false && $insertedId !== '' && $insertedId !== '0') {
+                return (int)$insertedId;
+            }
+            return (int)$id;
         }
         return false;
     }
@@ -488,6 +554,55 @@ class Database {
             ':filename' => $newFilename,
             ':id' => $preuveId
         ]);
+    }
+
+    public function getUserByEmail($email) {
+        $this->reconnectIfNeeded();
+
+        $sql = "SELECT id, email, password_hash, role FROM users WHERE email = :email LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':email' => $email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user ?: null;
+    }
+
+    public function getUserById($id) {
+        $this->reconnectIfNeeded();
+
+        $sql = "SELECT id, email, role, created_at FROM users WHERE id = :id LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $user ?: null;
+    }
+
+    public function getUsers() {
+        $this->reconnectIfNeeded();
+
+        $sql = "SELECT id, email, role, created_at FROM users ORDER BY created_at DESC, id DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    public function countUsersByRole($role) {
+        $this->reconnectIfNeeded();
+
+        $sql = "SELECT COUNT(*) AS total FROM users WHERE role = :role";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':role' => $role]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ? (int)$result['total'] : 0;
+    }
+
+    public function deleteUserById($id) {
+        $this->reconnectIfNeeded();
+
+        $sql = "DELETE FROM users WHERE id = :id";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([':id' => $id]);
     }
 
     public function getConnection() {

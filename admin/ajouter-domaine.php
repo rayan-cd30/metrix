@@ -1,3 +1,7 @@
+<?php
+require_once '../classes/Auth.php';
+$user = Auth::requirePageRole('../login.php', '../index.php', ['admin']);
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -13,6 +17,10 @@
         <header class="admin-header">
             <h1>Ajouter une domaine</h1>
             <p class="subtitle">Complétez les informations ci-dessous pour créer une nouvelle domaine</p>
+            <p class="subtitle" style="margin-top: 8px;">
+                Connecte: <?= htmlspecialchars($user['email']) ?> |
+                <a href="../logout.php">Deconnexion</a>
+            </p>
         </header>
         <?php include __DIR__ . '/components/sidebar.php'; ?>
         <div class="form-card">
@@ -33,7 +41,7 @@
 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="window.location.href = '../'">Annuler</button>
-                    <button id="add-domaine-btn" type="button" class="btn btn-primary" data-action="domaine-add" data-form="#domaine-form" data-endpoint="../api/add_domaine.php">
+                    <button id="add-domaine-btn" type="button" class="btn btn-primary" data-action="form-submit" data-form="#domaine-form" data-endpoint="../api/create_entity.php" data-entity="domaine">
                         Ajouter le domaine
                     </button>
                 </div>

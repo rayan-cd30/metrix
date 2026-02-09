@@ -1,5 +1,7 @@
 <?php
+require_once '../classes/Auth.php';
 require_once '../classes/Database.php';
+$user = Auth::requirePageRole('../login.php', '../index.php', ['admin']);
 $database = new Database();
 $domaines = $database->getDomaines();
 ?>
@@ -18,6 +20,10 @@ $domaines = $database->getDomaines();
         <header class="admin-header">
             <h1>Ajouter une clause</h1>
             <p class="subtitle">Complétez les informations ci-dessous pour créer une nouvelle clause</p>
+            <p class="subtitle" style="margin-top: 8px;">
+                Connecte: <?= htmlspecialchars($user['email']) ?> |
+                <a href="../logout.php">Deconnexion</a>
+            </p>
         </header>
         <!-- Sidebar Admin Navigation -->
         <?php include __DIR__ . '/components/sidebar.php'; ?>
@@ -77,7 +83,7 @@ $domaines = $database->getDomaines();
 
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" onclick="window.location.href = '../'">Annuler</button>
-                    <button id="add-clause-btn" type="button" class="btn btn-primary" data-action="clause-add" data-form="#clause-form" data-endpoint="../api/add_clause.php">
+                    <button id="add-clause-btn" type="button" class="btn btn-primary" data-action="form-submit" data-form="#clause-form" data-endpoint="../api/create_entity.php" data-entity="clause">
                         Ajouter la clause
                     </button>
                 </div>
